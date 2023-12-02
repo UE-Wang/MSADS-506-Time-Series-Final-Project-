@@ -1,0 +1,419 @@
+---
+title: "506 Final Project"
+output: html_document
+---
+
+*Baggage - The total number of passenger complaints for theft of baggage contents, or for lost, damaged, or misrouted luggage for the airline that month
+
+*Scheduled - The total number of flights scheduled by that airline that month
+
+*Cancelled - The total number of flights cancelled by that airline that month
+
+*Enplaned - The total number of passengers who boarded a plane with the airline that month
+
+```{r}
+# load the packages
+
+library(readxl)
+library(tidyverse)
+library(fpp2)
+library(zoo)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(forecast)
+library(vtable)
+set.seed(506)
+```
+
+
+```{r}
+df <- read_csv("C:/Users/lvand/OneDrive/Desktop/Time Series Analysis/FINAL GROUP PROJECT/baggagecomplaints.csv",
+                col_types = cols(Date = col_date(format = "%m/%Y")))
+
+df <- df %>%
+  mutate(Baggage_Ratio = Baggage / Enplaned *100,
+         Cancel_Ratio = Cancelled / Scheduled *100)
+df
+```
+
+# Exploratory Data Analysis
+
+### Summary Statistics
+
+```{r}
+summary(df)
+```
+```{r}
+summary_table <- summary(df)
+
+write.table(summary_table, "summary_table.txt", sep="\t")
+```
+    
+### Correlations    
+      
+```{r}
+cor(df[, c("Baggage", "Scheduled", "Cancelled", "Enplaned")])
+```
+
+### Missing Values
+
+```{r}
+# Count NA values in each column
+na_count_per_column <- colSums(is.na(df))
+
+# Print the result
+print(na_count_per_column)
+```
+### Outliers
+
+```{r}
+# Set up a 1x3 layout for three box plots
+par(mfrow = c(1, 4))
+
+# Create box plots for each variable
+boxplot(baggagecomplaints$Baggage, main="Baggage Complaints")
+boxplot(baggagecomplaints$Scheduled, main="Scheduled Flights")
+boxplot(baggagecomplaints$Cancelled, main="Canceled Flights")
+boxplot(baggagecomplaints$Enplaned, main="Enplaned Flights")
+```
+
+```{r}
+bag <- ts(df$Baggage,start = c(2004, 01), end = c(2010, 12), frequency = 12)
+autoplot(bag) +
+  theme_classic() +
+  labs(x = "Time", y = "Baggage Content Complaints") +
+  ggtitle("Baggage Complaint Over Time")
+```
+
+```{r}
+# Combine the data for different airlines into one time series object
+American_Eagle <- subset(df, Airline == 'American Eagle')
+Hawaiian <- subset(df, Airline == 'Hawaiian')
+United <- subset(df, Airline == 'United')
+
+# Create time series objects for each airline
+American_Eagle.ts <- ts(American_Eagle$Baggage, start = c(2004, 1), end = c(2010, 12), frequency = 12)
+Hawaiian.ts <- ts(Hawaiian$Baggage, start = c(2004, 1), end = c(2010, 12), frequency = 12)
+United.ts <- ts(United$Baggage, start = c(2004, 1), end = c(2010, 12), frequency = 12)
+
+# Merge the time series data into one object
+merged_ts <- cbind(American_Eagle = American_Eagle.ts, Hawaiian = Hawaiian.ts, United = United.ts)
+
+# Plot the merged time series data
+autoplot(merged_ts) +
+  theme_classic() +
+  labs(x = "Time", y = "Baggage Complaints") +
+  ggtitle("Baggage Complaints Over Time")
+
+```
+
+```{r}
+# Calculate baggage complaints per enplaned passenger for each airline
+American_Eagle$Baggage_Ratio <- American_Eagle$Baggage / American_Eagle$Enplaned *100
+Hawaiian$Baggage_Ratio <- Hawaiian$Baggage / Hawaiian$Enplaned *100
+United$Baggage_Ratio <- United$Baggage / United$Enplaned *100
+
+# Combine the ratios into one data frame
+merged_ratios <- data.frame(
+  American_Eagle = American_Eagle$Baggage_Ratio,
+  Hawaiian = Hawaiian$Baggage_Ratio,
+  United = United$Baggage_Ratio)
+
+# Convert merged ratios into a time series object
+merged_Baggage_Ratio <- ts(merged_ratios, start = c(2004, 1), end = c(2010, 12), frequency = 12)
+
+# Plot the merged ratio time series data
+autoplot(merged_Baggage_Ratio) +
+  theme_classic() +
+  labs(x = "Time", y = "Baggage Complaints per Enplaned Passenger") +
+  ggtitle("Baggage Complaints per Enplaned Passenger Over Time")
+
+```
+
+
+```{R}
+# Calculate canceled flights per scheduled flight for each airline
+American_Eagle$Cancel_Ratio <- American_Eagle$Cancelled / American_Eagle$Scheduled *100
+Hawaiian$Cancel_Ratio <- Hawaiian$Cancelled / Hawaiian$Scheduled *100
+United$Cancel_Ratio <- United$Cancelled / United$Scheduled *100
+
+# Combine the ratios into one data frame
+merged_Cancel_ratios <- data.frame(
+  American_Eagle = American_Eagle$Cancel_Ratio,
+  Hawaiian = Hawaiian$Cancel_Ratio,
+  United = United$Cancel_Ratio)
+
+# Convert merged ratios into a time series object
+merged_Cancel_Ratio <- ts(merged_Cancel_ratios, start = c(2004, 1), end = c(2010, 12), frequency = 12)
+
+# Plot the merged ratio time series data
+autoplot(merged_Cancel_Ratio) +
+  theme_classic() +
+  labs(x = "Time", y = "Canceled Flight divided by Scheduled") +
+  ggtitle("Canceled Flights per Scheduled Flight Over Time")
+```
+
+```{r}
+bag_ratio.ts <- ts(df$Baggage_Ratio,start = c(2004, 01), end = c(2010, 12), frequency = 12)
+autoplot(bag_ratio.ts) +
+  theme_classic() +
+  labs(x = "Time", y = "Baggage per Enplaned Ratio") +
+  ggtitle("Baggage per Enplaned Ratio Over Time")
+```
+
+```{r}
+Cancel_Ratio.ts <- ts(df$Cancel_Ratio,start = c(2004, 01), end = c(2010, 12), frequency = 12)
+autoplot(Cancel_Ratio.ts) +
+  theme_classic() +
+  labs(x = "Time", y = "Flight Cancel Ratio") +
+  ggtitle("Flight Cancel Ratio Over Time")
+```
+
+```{r}
+stl.bag <- stl(bag, s.window = "periodic")
+plot(stl.bag)
+```
+
+```{r}
+stl.bag_ratio <- stl(bag_ratio.ts, s.window = "periodic")
+plot(stl.bag_ratio)
+```
+
+
+```{r}
+stl.Cancel_Ratio <- stl(Cancel_Ratio.ts, s.window = "periodic")
+plot(stl.Cancel_Ratio)
+```
+
+# Data Preproccesing
+
+```{r}
+bag.ts <- ts(df$Baggage,start = c(2004, 01), end = c(2010, 12), frequency = 12)
+
+autoplot(bag.ts) +
+  theme_classic() +
+  labs(x = "Time", y = "Baggage Complaint Over Time")
+```
+
+### Moving Average Smoothing
+
+```{r}
+# Calculate moving averages
+bag.ts.trailing <- rollmean(bag.ts, k = 12, align = "right")
+bag.ts.ma.centered <- rollmean(bag.ts, k = 12, fill = NA)  # Using rollmean for centered moving average
+
+# Plotting
+plot(bag.ts, ylim = c(1000, 35000), ylab = "Baggage Complaints", xlab = "Time", bty = "n", xaxt = "n",
+     xlim = c(2004, 2010), main = "")
+axis(1, at = seq(2004, 2010, 1), labels = seq(2004, 2010, 1))
+lines(bag.ts.ma.centered, lwd = 2, col = "blue")  
+lines(bag.ts.trailing, lwd = 2, lty = 2, col = "red") 
+
+# Adding legend
+legend("topright", legend = c("Baggage Complaint", "Centered Moving Average", "Trailing Moving Average"),
+       lty = c(1, 1, 2), lwd = c(1, 2, 2), col = c("black", "blue", "red"))
+
+```
+
+Moving average does not work well with the data that have trend or seasonality. The  moving average does not capture the seasonality in the data. Seasons with high baggage complaints are under-forecasted, and seasons with low baggage complaints are over-forecasted.
+
+# Modeling
+
+### Simple Exponential Smoothing Model
+
+```{r}
+diff.twice.ts <- diff(diff(bag.ts, lag = 12), lag = 4)
+training.ts <- window(bag.ts, start = c(2004, 01), end = c(2010, 06))
+test.ts <- window(bag.ts, start = c(2010, 07), end = c(2010, 12))
+
+ses <- ets(training.ts, model = "ANN", alpha = 0.2)
+ses.pred <- forecast(ses, h = 6, level = 0)
+ses.pred
+
+plot(ses.pred, ylim = c(1000, 35000),  ylab = "Baggage Complaints (Twice-Differenced)", xlab = "Time",
+    bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(ses.pred$fitted, lwd = 2, col = "blue")
+lines(test.ts)
+```
+
+```{r}
+accuracy(ses.pred$mean, test.ts)
+```
+
+### Holt-Winter’s exponential smoothing model 
+
+```{r}
+hwin <- ets(training.ts, model = "MAA")
+hwin.pred <- forecast(hwin, h = 6, level = 0)
+
+plot(hwin.pred, ylim = c(1000, 35000), ylab = "Baggage Complaints", xlab = "Time",
+     bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(hwin.pred$fitted, lwd = 2, col = "blue")
+lines(test.ts)
+```
+
+```{r}
+accuracy(hwin.pred$mean, test.ts)
+```
+
+### STL + ARIMA 
+
+```{r}
+# Fit the STL + ARIMA model
+stlm.reg.fit <- stlm(training.ts, s.window = "periodic", method = "arima")
+
+# Forecast using the trained model
+stlm.reg.pred <- forecast(stlm.reg.fit, h = length(test.ts))
+
+# Plot the forecast
+plot(stlm.reg.pred, xlab = "Year", ylab = "Baggage Complaints")
+```
+
+```{r}
+accuracy(stlm.reg.pred$mean, test.ts)
+```
+
+```{r}
+library(knitr)
+
+# Accuracy_table data frame
+accuracy_table <- data.frame(
+  Model = c("Simple Exponential Smoothing", "Holt-Winters", "ARIMA"),
+  ME = c(-432.5183, 45.45592, 850.5374),
+  RMSE = c(1262.605, 1864.611, 2047.311),
+  MAE = c(1061.951, 1706.882, 1768.298),
+  MPE = c(-6.236093, 2.874442, 11.61096),
+  MAPE = c(11.74719, 18.38551, 20.11946),
+  ACF1 = c(-0.1278269, -0.16718, -0.1133736),
+  Theils_U = c(0.8029777, 1.151863, 1.264255)
+)
+
+# Printing the table using kable with formatting adjustments
+cat(kable(accuracy_table, caption = "Accuracy Metrics for Different Models", format = "markdown"),
+    sep = "\n")
+```
+
+Despite the lower RMSE of SES, its inability to effectively capture seasonality might lead to less accurate forecasts, especially when dealing with data where seasonal patterns significantly impact the outcomes.
+
+Holt-Winter’s Exponential Smoothing, with its capability to explicitly handle seasonality and slightly lower RMSE compared to STL + ARIMA, appears to be a more suitable choice for forecasting in this scenario. Prioritizing accurate representation of seasonal patterns can be crucial, and HWIN's ability to capture these patterns gives it an edge over SES.
+
+### Holt-Winter's for each Airline:
+
+#### Holt-Winter’s exponential smoothing model for American Eagle:
+
+```{r}
+AE_training.ts <- window(American_Eagle.ts, start = c(2004, 01), end = c(2010, 06))
+AE_test.ts <- window(American_Eagle.ts, start = c(2010, 07), end = c(2010, 12))
+AE_hwin <- ets(AE_training.ts, model = "MAA")
+AE_hwin.pred <- forecast(AE_hwin, h = 6, level = 0)
+
+plot(AE_hwin.pred, ylim = c(1000, 35000), ylab = "American Eagle Baggage Complaints", xlab = "Time",
+     bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(AE_hwin.pred$fitted, lwd = 2, col = "blue")
+lines(AE_test.ts)
+```
+
+```{r}
+accuracy(AE_hwin.pred$mean, AE_test.ts)
+```
+
+#### Holt-Winter’s exponential smoothing model for United Airline:
+
+```{r}
+UA_training.ts <- window(American_Eagle.ts, start = c(2004, 01), end = c(2010, 06))
+UA_test.ts <- window(American_Eagle.ts, start = c(2010, 07), end = c(2010, 12))
+UA_hwin <- ets(UA_training.ts, model = "MAA")
+UA_hwin.pred <- forecast(UA_hwin, h = 6, level = 0)
+
+plot(UA_hwin.pred, ylim = c(1000, 35000), ylab = "United Airline Baggage Complaints", xlab = "Time",
+     bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(UA_hwin.pred$fitted, lwd = 2, col = "blue")
+lines(UA_test.ts)
+```
+```{r}
+accuracy(UA_hwin.pred$mean, UA_test.ts)
+```
+
+
+#### Holt-Winter’s exponential smoothing model for Hawaiian Airline:
+
+```{r}
+HA_training.ts <- window(Hawaiian.ts, start = c(2004, 01), end = c(2010, 06))
+HA_test.ts <- window(Hawaiian.ts, start = c(2010, 07), end = c(2010, 12))
+HA_hwin <- ets(HA_training.ts, model = "MAA")
+HA_hwin.pred <- forecast(HA_hwin, h = 6, level = 0)
+
+plot(HA_hwin.pred, ylim = c(500, 3500), ylab = "Hawaiian Airline Baggage Complaints", xlab = "Time",
+     bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(HA_hwin.pred$fitted, lwd = 2, col = "blue")
+lines(HA_test.ts)
+```
+```{r}
+accuracy(HA_hwin.pred$mean, HA_test.ts)
+```
+Other models for Hawaiian Airline:
+
+STL + ARIMA 
+
+```{r}
+# Fit the STL + ARIMA model
+ha.stlm.reg.fit <- stlm(HA_training.ts, s.window = "periodic", method = "arima")
+
+# Forecast using the trained model
+ha.stlm.reg.pred <- forecast(ha.stlm.reg.fit, h = length(HA_test.ts))
+
+# Plot the forecast
+plot(ha.stlm.reg.pred, xlab = "Year", ylab = "Weekly Sales")
+```
+
+```{r}
+accuracy(ha.stlm.reg.pred$mean, HA_test.ts)
+```
+
+Simple exponential smoothing model for Hawaiian Airlines
+
+```{r}
+ha.diff.twice.ts <- diff(diff(bag.ts, lag = 12), lag = 4)
+
+ha.ses <- ets(HA_training.ts, model = "ANN", alpha = 0.2)
+ha.ses.pred <- forecast(ha.ses, h = 6, level = 0)
+ha.ses.pred
+
+plot(ha.ses.pred, ylim = c(500, 3500),  ylab = "Hawaiian Airline Baggage Complaints (Twice-Differenced)", xlab = "Time",
+    bty = "l", xaxt = "n", xlim = c(2004, 2011), main = "", flty = 2)
+axis(1, at = seq(2004, 2011, 1), labels = format(seq(2004, 2011, 1)))
+lines(ha.ses.pred$fitted, lwd = 2, col = "blue")
+lines(HA_test.ts)
+```
+
+```{r}
+accuracy(ha.ses.pred$mean, HA_test.ts)
+```
+
+```{r}
+library(knitr)
+# Assuming you have the data in variables like this:
+HA_data <- data.frame(
+  Method = c("HA_hwin.pred", "ha.stlm.reg.pred", "ha.ses.pred"),
+  ME = c(653.7532, 506.2353, 658.8911),
+  RMSE = c(873.2616, 724.8699, 820.6329),
+  MAE = c(739.4063, 635.6922, 658.8911),
+  MPE = c(27.89336, 20.56007, 29.53305),
+  MAPE = c(34.23057, 30.24288, 29.53305),
+  ACF1 = c(0.3953068, 0.3674934, 0.318373),
+  Theils_U = c(1.841316, 1.53408, 1.671758)
+)
+
+# Printing the table using kable
+#knitr::kable(data, caption = "Accuracy Metrics for Different Methods")
+cat(kable(HA_data, caption = "Hawaiian Airline Accuracy Metrics for Different Models", format = "markdown"),
+    sep = "\n")
+```
+
+The STL + ARIMA model demonstrates superior accuracy in forecasting, as evidenced by its lowest RMSE and MAE among the tested models. Conversely, the Holt-Winter’s Exponential Smoothing Model exhibits the highest RMSE and MAE, implying potential limitations in its performance relative to the others in this dataset. Although the Simple Exponential Smoothing Model displays somewhat elevated error metrics compared to the STL + ARIMA model, it outperforms the Holt-Winter’s Exponential Smoothing Model in certain aspects, particularly in terms of MAE. The abrupt surge in complaints post-July 2010 is likely a significant factor impacting the models' predictive precision.
