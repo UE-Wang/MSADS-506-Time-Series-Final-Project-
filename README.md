@@ -6,10 +6,11 @@
 
 ## Introduction
 
-Airlines thrive on meeting consumer demands for fast and convenient travel. However, various inevitable factors, including weather, mechanical issues, and labor strikes, often disrupt flight schedules and impact consumer satisfaction. Baggage-related problems, such as loss, delays, and damages, further affect the overall consumer experience.
+Consumer satisfaction in the airline industry is significantly impacted by baggage-related issues, including theft, loss, damages, and misrouting. These problems not only affect passenger experiences but also contribute to substantial dissatisfaction and added expenses for airlines. Understanding the patterns and trends in baggage complaints is pivotal for airlines to address these issues effectively.
 
 ## Problem Statement
-Identifying trends in flight delays, cancellations, and baggage complaints is crucial for airlines to proactively address customer dissatisfaction, reducing costly expenses and enhancing passenger satisfaction. This analysis aims to uncover patterns in airline operations between 2004 and 2010, focusing on United Airlines, American Eagle, and Hawaiian Airlines.
+
+The prevalence of baggage-related problems, such as loss, damages, and misrouting, poses a significant challenge for airlines. Identifying patterns in baggage complaints across United Airlines, American Eagle, and Hawaiian Airlines between 2004 and 2010 is crucial. This analysis aims to delve into the time series data to uncover trends, anticipate potential issues, and propose preventive measures to reduce baggage-related consumer dissatisfaction and associated costs.
 
 ## Data Source
 
