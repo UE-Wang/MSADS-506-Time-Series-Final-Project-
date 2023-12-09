@@ -26,7 +26,7 @@ Enplaned: Total passengers boarding the airline's planes.
 ## Link to Dataset:
 https://www.kaggle.com/datasets/gabrielsantello/airline-baggage-complaints-time-series-dataset
 
-##P roject Structure
+## Project Structure
 
 Part 1: Exploratory Data Analysis
 Part 2: Data Preprocessing
