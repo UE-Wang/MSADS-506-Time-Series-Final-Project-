@@ -24,7 +24,7 @@ Cancelled: Total number of flights canceled by the airline.
 Enplaned: Total passengers boarding the airline's planes.
 
 ## Link to Dataset:
-https://www.kaggle.com/datasets/gabrielsantello/airline-baggage-complaints-time-series-dataset
+https://www.kaggle.com/datasets/gabrielsantello/airline-baggage-complaints-time-series-datase
 
 ##P roject Structure
 
