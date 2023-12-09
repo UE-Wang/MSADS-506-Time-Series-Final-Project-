@@ -1,4 +1,4 @@
-# MSADS-506-Time-Series-Final-Project-
+# MSADS-506-Time-Series-Final-Project
 
 #### Team 3: Logan Van Dine & UE Wang
 
